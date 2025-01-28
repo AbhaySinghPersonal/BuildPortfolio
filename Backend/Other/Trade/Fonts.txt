@@ -1,0 +1,5 @@
+Fonts used in this design:
+
+Font: JetBrains Mono
+Author: JetBrains,Philipp Nurullin,Konstantin Bulenkov
+Url: https://fonts.google.com/specimen/JetBrains+Mono
