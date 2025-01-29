@@ -2,7 +2,8 @@ import Generic as G
 import MarketProcessing as MP
 from selenium.common.exceptions import NoSuchElementException,TimeoutException,NoSuchWindowException
 import time
-from MarketConfig import LOAD_CHCK_INTVL
+from MarketConfig import LOAD_CHCK_INTVL,LIST_OF_Fund,LIST_OF_Equity
+from pathlib import Path
 
 def mainMarket():
     driver=None
@@ -10,13 +11,20 @@ def mainMarket():
         try:
             Cur_Dt_Formatted,Cur_Dt=G.GetCurDate("%Y-%m-%d")
             G.LoadTradeClosedDate()
-            IsLoadHis,IsLoadCur=G.IsLoadHistorCur(Cur_Dt_Formatted,Cur_Dt)
-            
-            #if(IsLoadHis):
-            #    MP.LoadHistoryStck(Cur_Dt_Formatted)
-            #    MP.LoadHistory(Cur_Dt_Formatted)
-            if(IsLoadCur):
-                MP.UpdateCurrent(Cur_Dt)
+            #IsLoadHis,IsLoadCur=G.IsLoadHistorCur(Cur_Dt_Formatted,Cur_Dt)
+            my_file = Path(LIST_OF_Equity)
+            if my_file.is_file():
+                MP.LoadHistoryStck(Cur_Dt_Formatted)
+                G.RemoveFile(LIST_OF_Equity)
+            else:
+                print('No Stock History to Load: Not Exist'+LIST_OF_Equity)
+            my_file = Path(LIST_OF_Fund)
+            if my_file.is_file():
+                MP.LoadHistory(Cur_Dt_Formatted)
+                G.RemoveFile(LIST_OF_Fund)
+            else:
+                print('No Stock History to Load: Not Exist'+LIST_OF_Fund)
+            MP.UpdateCurrent(Cur_Dt)
         except SyntaxError:
             print('Exception SyntaxError')
         except TypeError:

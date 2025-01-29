@@ -4,19 +4,15 @@ from MarketConfig import MUTUAL_FUND,EQUITY,NSE_EXT,ALL
 import requests
 import Generic as G
 from selenium import webdriver
-from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
 from selenium.webdriver import ActionChains
-from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support.wait import WebDriverWait
+from selenium.common.exceptions import TimeoutException
 import time
 import GenericDB as GDB
 import yfinance as yf
 
-def DownLoadOneFund(Fund_NM):
-    driver=G.getDriver()
-    url=HIST_LINK
-    driver.get(url)
-    #time.sleep(10)
+def DownLoadOneFund(Fund_NM,driver):
     print('Downloading:'+Fund_NM)
     Fund_dropdown_element=driver.find_element(By.XPATH,XPATH_HIST_Fund_DROP_DOWN)
     Fund_dropdown_element.send_keys(Fund_NM)
@@ -29,19 +25,21 @@ def DownLoadOneFund(Fund_NM):
     To_DT_element.send_keys(To_Dt)
     DownloadButton=driver.find_element(By.XPATH,XPATH_HIST_DOWNLOAD)
     driver.implicitly_wait(10)
-    time.sleep(4)
+    time.sleep(10)
     ActionChains(driver).move_to_element(DownloadButton).click(DownloadButton).perform()
     driver.get(DownloadButton.get_attribute('href'))
-    Pg=driver.find_element(By.XPATH,'/html/body/pre')
-    if driver:
-            print('Going to close Driver')
-            try:
-                driver.close()
-                print('after close')
-                driver.quit()
-            except:
-                print('Exception in closining driver')
-    return Pg.text
+    while(True):
+        try:
+            WebDriverWait(driver, 30).until(
+                lambda driver: driver.execute_script("return document.readyState")
+                == "complete"
+            )
+            break
+        except TimeoutException as err:
+            continue
+    time.sleep(20)
+    PgText=driver.find_element(By.XPATH,'/html/body/pre').get_attribute('innerText')
+    return PgText
     #with open(Fund_FILE_NM, 'w+') as f:
     #    #f.write(driver.page_source)
     #    f.write(Pg.text)
@@ -56,10 +54,17 @@ def ExtractDataForEQ(one_Fund,Per,Exchng):
     Dt=EQ_Cls_Dt_ClsPrc.index.to_list()
     Cls=EQ_Cls_Dt_ClsPrc.to_list()
     LEN_Of_Dur=len(Dt)
-    Fund_Com_Lst=[]
+    Fund_Grp_Lst={}
+    Fund_Sub_Ret=[]
     for idx in range(0,LEN_Of_Dur):
-        Fund_Com_Lst.append([one_Fund[0],one_Fund[1],one_Fund[2],Cls[idx],Dt[idx].date()])
-    return Fund_Com_Lst
+        KEY=one_Fund[0]
+        if((KEY not in Fund_Grp_Lst) and (len(KEY)>0)):
+            Fund_Grp_Lst[KEY]=[]
+            Fund_Sub_Ret.append(KEY)
+            print('Extracting:'+KEY)
+        if((len(KEY)>0) and (len(one_Fund[2])>0)):
+            Fund_Grp_Lst[KEY].append([one_Fund[0],one_Fund[1],one_Fund[2],Cls[idx],Dt[idx].date()])
+    return Fund_Grp_Lst,Fund_Sub_Ret
         
 
 def LoadHistoryStck(Cur_Dt_Formatted):
@@ -82,8 +87,8 @@ def LoadHistoryStck(Cur_Dt_Formatted):
                 Sch_Lst_Prcs.append(sc)
         if len(Sch_Lst_Prcs)>0:
             print('########Loading Fund:'+FundNm+" "+str(idx)+" of "+str(LEN)+"#######")
-            Fund_Com_Lst=ExtractDataForEQ(one_Fund,"5y",NSE_EXT)
-            G.CreateAndLoadAnalyticalData(Fund_Com_Lst,Cur_Dt_Formatted,Sch_Lst,EQUITY)
+            Fund_Com_Lst,Fund_Sub=ExtractDataForEQ(one_Fund,"5y",NSE_EXT)
+            G.CreateAndLoadAnalyticalData(Fund_Com_Lst,Cur_Dt_Formatted,Fund_Sub,EQUITY)
             time.sleep(5)
 
 def LoadHistory(Cur_Dt_Formatted):
@@ -92,6 +97,9 @@ def LoadHistory(Cur_Dt_Formatted):
     List_Of_Fund.remove(List_Of_Fund[0])
     LEN=len(List_Of_Fund)
     idx=0
+    driver=G.getDriver()
+    url=HIST_LINK
+    driver.get(url)
     for one_Fund in List_Of_Fund:
         idx=idx+1
         FundNm=one_Fund[0]
@@ -105,9 +113,17 @@ def LoadHistory(Cur_Dt_Formatted):
                 Sch_Lst_Prcs.append(sc)
         if len(Sch_Lst_Prcs)>0:
             print('########Loading Fund:'+FundNm+" "+str(idx)+" of "+str(LEN)+"#######")
-            Pg=DownLoadOneFund(FundNm)
+            Pg=DownLoadOneFund(FundNm,driver)
             G.LoadOneFund(tuple(Sch_Lst_Prcs),Cur_Dt_Formatted,Pg,MUTUAL_FUND)
             time.sleep(5)
+    if driver:
+        print('Going to close Driver')
+        try:
+            driver.close()
+            print('after close')
+            driver.quit()
+        except:
+            print('Exception in closining driver')
 
 
 def get_latest_nav_by_isin(scheme_code,data):

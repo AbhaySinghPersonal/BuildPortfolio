@@ -200,7 +200,7 @@ class Holdings(db.Model):
     FundPrice=db.Column(db.Double)
     Units=db.Column(db.Double)
     __table_args__ = (
-        UniqueConstraint('Email', 'ISIN', name='uq_MailISIN'),)
+        UniqueConstraint('Email', 'ISIN', name='uq_MailISIN2'),)
     def __init__(self,Email,ISIN,FundPrice,Units):
         self.Email=Email
         self.ISIN=ISIN

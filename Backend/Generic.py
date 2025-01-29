@@ -96,7 +96,8 @@ def ExtractData(FN,SKIPROW,COLS,SEP):
     return Com_Lst,Com_Lst_Dict
 
 def ExtractDataFrPg(Fund_Sub,Pg):
-    Com_Lst=[]
+    Fund_Grp_Lst={}
+    Fund_Sub_Ret=[]
     for line in Pg.splitlines():
             if ((line.startswith(Fund_Sub) or ((Fund_Sub[0]==ALL) and (";" in line)))):
                 fields = line.split(';')
@@ -106,8 +107,14 @@ def ExtractDataFrPg(Fund_Sub,Pg):
                 Lst.append(fields[2])
                 Lst.append(fields[4])
                 Lst.append(fields[7])
-                Com_Lst.append(Lst)
-    return Com_Lst
+                KEY=fields[0]
+                if((KEY!='Scheme Code') and (len(KEY)>0) and (len(fields[2].strip())>0) and (len(fields[4].strip())>0) and (len(fields[7].strip())>0)):
+                  if(KEY not in Fund_Grp_Lst):
+                     Fund_Grp_Lst[KEY]=[]
+                     Fund_Sub_Ret.append(KEY)
+                     print('Extracting:'+KEY)
+                  Fund_Grp_Lst[KEY].append(Lst)
+    return Fund_Grp_Lst,Fund_Sub_Ret
 
 def CreateMasterFundList(Fund_Com_Lst):
     print('Creating Master Fund List')
@@ -201,43 +208,52 @@ def AddAnalyticalDataInMasterFundList(Fund_Grp_Lst):
     Cal_Period={}
     try:
       for Fund_Sch in Fund_Grp_Lst:
-         idx=idx+1
-         Price_Lst=[]
-         EMA_9=EMA_12=EMA_21=EMA_26=EMA_50=EMA_100=0
-         Gain_Lst=[]
-         Loss_Lst=[]
-         LEN=len(Fund_Grp_Lst[Fund_Sch][0:])
-         if(idx%10==0):
-            print(str(idx)+' of '+ str(LEN1)+' Creating Analysis Data for '+Fund_Sch+" Analysing "+str(LEN)+" Rows")
-         FundLaunchDt=Fund_Grp_Lst[Fund_Sch][0][4]
-         if(isinstance(FundLaunchDt, datetime.date)):
-               FundLaunchDtFrmt=FundLaunchDt
-         else:
-               FundLaunchDtFrmt=datetime.datetime.strptime(FundLaunchDt, "%d-%b-%Y")
-            
-         DateTillNoCalFrmtd=GetFutOrPastDate(FundLaunchDtFrmt,CAL_FREE_PERIOD,False,"%Y-%m-%d")
-         Last_No_Day_Cal=1
-         Is_First_Analysis=True
-         for Fund_Row in Fund_Grp_Lst[Fund_Sch][0:]:
-               PrcAsOnDtFrmtd=ChangeDtFomat(Fund_Row[4],"%d-%b-%Y","%Y-%m-%d")
-               Price_Lst.append(float(Fund_Row[3]))
-               PrcLstLEN=len(Price_Lst)
-               if(PrcLstLEN>=2):
-                  Lst=Price_Lst[-1]
-                  SecLast=Price_Lst[-2]
-                  Gain_Lst,Loss_Lst,Price_Lst_GAIN,Price_Lst_LOSS=UpdGainLossList(Lst,SecLast,Gain_Lst,Loss_Lst)
-               else:
-                  Price_Lst_GAIN=Price_Lst_LOSS=0
-               LST=[None,None,None,None,None,Price_Lst_GAIN,Price_Lst_LOSS,None,None,None,None,None,None,None,None]
-               if(PrcAsOnDtFrmtd>=DateTillNoCalFrmtd):
-                  Price_Lst_Mean,Price_Lst_StdDev2,Price_Lst_Mean_Plus_StdDev2,Price_Lst_Mean_Minus_StdDev2,EMA_9,EMA_12,EMA_21,EMA_26,EMA_50,EMA_100,RSI,MACD=GetAnalyticalData(Price_Lst,EMA_9,EMA_12,EMA_21,EMA_26,EMA_50,EMA_100,Gain_Lst,Loss_Lst,Is_First_Analysis)
-                  BuySellRecommend=CalBuySellRecommend(float(Fund_Row[3]),Price_Lst_Mean_Plus_StdDev2,Price_Lst_Mean_Minus_StdDev2,RSI)
-                  LST=[BuySellRecommend,Price_Lst_Mean,Price_Lst_StdDev2,Price_Lst_Mean_Plus_StdDev2,Price_Lst_Mean_Minus_StdDev2,Price_Lst_GAIN,Price_Lst_LOSS,EMA_9,EMA_12,EMA_21,EMA_26,EMA_50,EMA_100,RSI,MACD]
-                  del Price_Lst[0]
-                  Is_First_Analysis=False
-               else:
-                  Last_No_Day_Cal=Last_No_Day_Cal+1
-               Fund_Row.extend(LST)
+         try:
+            idx=idx+1
+            Price_Lst=[]
+            EMA_9=EMA_12=EMA_21=EMA_26=EMA_50=EMA_100=0
+            Gain_Lst=[]
+            Loss_Lst=[]
+            LEN=len(Fund_Grp_Lst[Fund_Sch][0:])
+            if(idx%10==0):
+               print(str(idx)+' of '+ str(LEN1)+' Creating Analysis Data for '+Fund_Sch+" Analysing "+str(LEN)+" Rows")
+            FundLaunchDt=Fund_Grp_Lst[Fund_Sch][0][4]
+            if(isinstance(FundLaunchDt, datetime.date)):
+                  FundLaunchDtFrmt=FundLaunchDt
+            else:
+                  FundLaunchDtFrmt=datetime.datetime.strptime(FundLaunchDt, "%d-%b-%Y")
+               
+            DateTillNoCalFrmtd=GetFutOrPastDate(FundLaunchDtFrmt,CAL_FREE_PERIOD,False,"%Y-%m-%d")
+            Last_No_Day_Cal=1
+            Is_First_Analysis=True
+            for Fund_Row in Fund_Grp_Lst[Fund_Sch][0:]:
+                  PrcAsOnDtFrmtd=ChangeDtFomat(Fund_Row[4],"%d-%b-%Y","%Y-%m-%d")
+                  Price_Lst.append(float(Fund_Row[3]))
+                  PrcLstLEN=len(Price_Lst)
+                  if(PrcLstLEN>=2):
+                     Lst=Price_Lst[-1]
+                     SecLast=Price_Lst[-2]
+                     Gain_Lst,Loss_Lst,Price_Lst_GAIN,Price_Lst_LOSS=UpdGainLossList(Lst,SecLast,Gain_Lst,Loss_Lst)
+                  else:
+                     Price_Lst_GAIN=Price_Lst_LOSS=0
+                  LST=[None,None,None,None,None,Price_Lst_GAIN,Price_Lst_LOSS,None,None,None,None,None,None,None,None]
+                  if(PrcAsOnDtFrmtd>=DateTillNoCalFrmtd):
+                     Price_Lst_Mean,Price_Lst_StdDev2,Price_Lst_Mean_Plus_StdDev2,Price_Lst_Mean_Minus_StdDev2,EMA_9,EMA_12,EMA_21,EMA_26,EMA_50,EMA_100,RSI,MACD=GetAnalyticalData(Price_Lst,EMA_9,EMA_12,EMA_21,EMA_26,EMA_50,EMA_100,Gain_Lst,Loss_Lst,Is_First_Analysis)
+                     BuySellRecommend=CalBuySellRecommend(float(Fund_Row[3]),Price_Lst_Mean_Plus_StdDev2,Price_Lst_Mean_Minus_StdDev2,RSI)
+                     LST=[BuySellRecommend,Price_Lst_Mean,Price_Lst_StdDev2,Price_Lst_Mean_Plus_StdDev2,Price_Lst_Mean_Minus_StdDev2,Price_Lst_GAIN,Price_Lst_LOSS,EMA_9,EMA_12,EMA_21,EMA_26,EMA_50,EMA_100,RSI,MACD]
+                     del Price_Lst[0]
+                     Is_First_Analysis=False
+                  else:
+                     Last_No_Day_Cal=Last_No_Day_Cal+1
+                  Fund_Row.extend(LST)
+         except Exception as e:
+               print(f"An unexpected error occurred: {e}")
+               print(Fund_Row)
+               print(Price_Lst)
+               print(PrcLstLEN)
+               print(LST)
+               print(Fund_Grp_Lst[Fund_Sch][0])
+               continue
     except Exception as e:
       print(f"An unexpected error occurred: {e}")
     return Fund_Grp_Lst
@@ -281,36 +297,36 @@ def RetOneList(Fund_Ind_Row):
       ShotLongOneEntry['BuySellRecommend']=FundRow['BuySellRecommend']
    return FundRow,ShotLongOneEntry
 
-def CreateAndLoadAnalyticalData(Fund_Com_Lst,Cur_Dt_Formatted,Fund_Sub,FundTyp):
+def CreateAndLoadAnalyticalData(Fund_Grp_Lst,Cur_Dt_Formatted,Fund_Sub,FundTyp):
    try:
-      Fund_Grp_Lst=CreateMasterFundList(Fund_Com_Lst)
       Fund_Com_Lst=AddAnalyticalDataInMasterFundList(Fund_Grp_Lst)
 
       Fund_Sub = list(filter(None, Fund_Sub))
       Short_Long_Lst=[]
+      idx=0
+      LEN=len(Fund_Sub)
       for Fund_Sub_str in Fund_Sub:
-         FundCompList=[]
-         FundDesc=[]
-         FundDescSub,ISIN=RetOneListDesc(Fund_Com_Lst[Fund_Sub_str][-1],FundTyp)
-         FundDesc.append(FundDescSub)
-         for Fund_Ind_Row in Fund_Com_Lst[Fund_Sub_str]:
-            FundRow,ShotLongOneEntry=RetOneList(Fund_Ind_Row)
-            FundCompList.append(FundRow)
-            if(ShotLongOneEntry != None):
-               Short_Long_Lst.append(ShotLongOneEntry)
-         GDB.InsertOneFundData(FundDesc,FundCompList,Short_Long_Lst,ISIN,Cur_Dt_Formatted)
+         try:
+            idx=idx+1
+            print('Inserting:'+str(idx)+ " of "+str(LEN))
+            FundCompList=[]
+            FundDesc=[]
+            FundDescSub,ISIN=RetOneListDesc(Fund_Com_Lst[Fund_Sub_str][-1],FundTyp)
+            FundDesc.append(FundDescSub)
+            for Fund_Ind_Row in Fund_Com_Lst[Fund_Sub_str]:
+               FundRow,ShotLongOneEntry=RetOneList(Fund_Ind_Row)
+               FundCompList.append(FundRow)
+               if(ShotLongOneEntry != None):
+                  Short_Long_Lst.append(ShotLongOneEntry)
+            GDB.InsertOneFundData(FundDesc,FundCompList,Short_Long_Lst,ISIN,Cur_Dt_Formatted)
+         except Exception as e:
+            print(f"An unexpected error occurred: {e}"+ "Error in "+Fund_Sub_str)
+            continue
    except Exception as e:
       print(f"An unexpected error occurred: {e}")
 
 def LoadOneFund(Fund_Sub,Cur_Dt_Formatted,Pg,FundTyp):
-    Fund_Com_Lst=ExtractDataFrPg(Fund_Sub,Pg)
-    if(Fund_Sub[0]==ALL):
-      Fund_Sub=[]
-      for Fund_Ind_Row in Fund_Com_Lst:
-         if((Fund_Ind_Row[0] not in Fund_Sub) and (Fund_Ind_Row[0].strip()!='') and (Fund_Ind_Row[2].strip()!='')):
-            Fund_Sub.append(Fund_Ind_Row[0])
-      del Fund_Sub[0]
-      del Fund_Com_Lst[0]
+    Fund_Com_Lst,Fund_Sub=ExtractDataFrPg(Fund_Sub,Pg)
     CreateAndLoadAnalyticalData(Fund_Com_Lst,Cur_Dt_Formatted,Fund_Sub,FundTyp)
 
 def RemoveFile(FileNm):
