@@ -25,6 +25,7 @@ def mainMarket():
             else:
                 print('No Stock History to Load: Not Exist'+LIST_OF_Fund)
             MP.UpdateCurrent(Cur_Dt)
+            print("Sleeping for "+str(LOAD_CHCK_INTVL)+" seconds")
         except SyntaxError:
             print('Exception SyntaxError')
         except TypeError:
