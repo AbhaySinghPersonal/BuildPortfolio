@@ -28,6 +28,7 @@ def DownLoadOneFund(Fund_NM,driver):
     time.sleep(10)
     ActionChains(driver).move_to_element(DownloadButton).click(DownloadButton).perform()
     driver.get(DownloadButton.get_attribute('href'))
+    """
     while(True):
         try:
             WebDriverWait(driver, 30).until(
@@ -37,7 +38,8 @@ def DownLoadOneFund(Fund_NM,driver):
             break
         except TimeoutException as err:
             continue
-    time.sleep(20)
+    """
+    time.sleep(30)
     PgText=driver.find_element(By.XPATH,'/html/body/pre').get_attribute('innerText')
     return PgText
     #with open(Fund_FILE_NM, 'w+') as f:
