@@ -18,10 +18,8 @@ ma=Marshmallow(app)
 
 class User(db.Model):
     id=db.Column(db.Integer,primary_key=True)
-    userName=db.Column(db.String(32))
+    userName=db.Column(db.String(10))
     userEmail=db.Column(db.String(32),unique=True)
-    userAge=db.Column(db.Integer)
-    userAddress=db.Column(db.String(128))
     userPassword=db.Column(db.String(256))
     userLastPassword=db.Column(db.String(256))
     userIsActive=db.Column(db.String(1),default='Y') 
