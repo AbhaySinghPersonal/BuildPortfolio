@@ -168,8 +168,9 @@ def UpdateCurrent(Cur_Dt):
                 else:
                     continue
             elif(FndTyp==EQUITY):
-                Fund_Com_Lst=ExtractDataForEQ([Sch[0],Sch[2],Sch[1]],"1d",NSE_EXT)
-                nav_data=Fund_Com_Lst[-1]
+                Fund_Com_Lst,Fund_Sub=ExtractDataForEQ([Sch[0],Sch[2],Sch[1]],"1d",NSE_EXT)
+                KEY_NAV=Fund_Sub[0]
+                nav_data=Fund_Com_Lst[KEY_NAV][0]
                 nav_data[4]=nav_data[4].strftime("%Y-%m-%d")
             else:
                 print('Unknown Fund Type')
