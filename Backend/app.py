@@ -118,10 +118,8 @@ def register_user():
     print(request.get_json())
     userName=request.json['name']
     userEmail=request.json['email']
-    userAge=int(request.json['age'])
-    userAddress=request.json['address']
     userPassword=request.json['password']
-    userDB=User(userName,userEmail,userAge,userAddress,bcrypt.generate_password_hash (userPassword).decode('utf-8'))
+    userDB=User(userName,userEmail,bcrypt.generate_password_hash (userPassword).decode('utf-8'))
     db.session.add(userDB)
     db.session.commit()
     data=user_schema.jsonify(userDB)
@@ -153,5 +151,6 @@ def inspector_network():
     return {"status": "Network inspector active"}, 200
     
 if __name__ == "__main__":
-    app.run(host='192.168.1.5',port='8081',debug=True)
+    app.run(host='10.0.0.4',port='8081',debug=True)
+    #app.run(host='192.168.1.5',port='8081',debug=True)
     #app.run(debug=True)
