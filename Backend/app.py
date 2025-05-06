@@ -1,6 +1,6 @@
 
-from MarketConfig import DEBUG,NONE,SHRT_LNG_MAPNG
-from Model import User,UserSchema,app,db,FundSchema,Funds,Holdings,HoldingsSchema,ProposedFundBuySellAction,ProposedFundBuySellActionSchema
+from MarketConfig import DEBUG,NONE,SHRT_LNG_MAPNG,app,db
+from Model import User,UserSchema,FundSchema,Funds,Holdings,HoldingsSchema,ProposedFundBuySellAction,ProposedFundBuySellActionSchema
 from Model import FIShortLong,FIShortLongSchema
 from flask import jsonify,request
 import json
@@ -18,22 +18,69 @@ def PrintOnConsole(str):
     if DEBUG:
         print(str)
 
-@app.route('/Recommend',methods=['POST'])
+@app.route('/Recommend', methods=['POST'])
 def Recommend_fund():
     PrintOnConsole('-----------Recommend---------------')
-    ISIN_F=request.json['ISIN']
-    dateOn=request.json['Date']
-    ShrtLngObj=db.session.query(FIShortLong).filter_by(ISIN=ISIN_F,UpdDate=dateOn).all()
-    RET={'RETURN_CODE':0}
-    BuySell=NONE
-    if(ShrtLngObj):
-        BuySell=ShrtLngObj[0].BuySellRecommend
-    
+    ISIN_F = request.json['ISIN']
+    dateOn = request.json['Date']
+    print('ISIN_F:', ISIN_F)
+    print('dateOn:', dateOn)
+
+    # Query for the record prior to dateOn
+    previous_record = db.session.query(FIShortLong).filter(
+        FIShortLong.ISIN == ISIN_F,
+        FIShortLong.UpdDate < dateOn
+    ).order_by(FIShortLong.UpdDate.desc()).first()
+
+    # Query for the record on dateOn
+    current_record = db.session.query(FIShortLong).filter(
+        FIShortLong.ISIN == ISIN_F,
+        FIShortLong.UpdDate == dateOn
+    ).first()
+
+    # Query for the record after dateOn
+    next_record = db.session.query(FIShortLong).filter(
+        FIShortLong.ISIN == ISIN_F,
+        FIShortLong.UpdDate > dateOn
+    ).order_by(FIShortLong.UpdDate.asc()).first()
+
+    RET = {'RETURN_CODE': 0}
+    previous_recommendation = NONE
+    current_recommendation = NONE
+    next_recommendation = NONE
+    previous_date = None
+    current_date = None
+    next_date = None
+
+    if previous_record:
+        previous_recommendation = previous_record.BuySellRecommend
+        previous_date = previous_record.UpdDate
+
+    if current_record:
+        current_recommendation = current_record.BuySellRecommend
+        current_date = current_record.UpdDate
+
+    if next_record:
+        next_recommendation = next_record.BuySellRecommend
+        next_date = next_record.UpdDate
+
     message = {
-        'BuySellRecommend': SHRT_LNG_MAPNG[BuySell]
+        'Previous': {
+            'BuySellRecommend': SHRT_LNG_MAPNG[previous_recommendation],
+            'Date': previous_date
+        },
+        'Current': {
+            'BuySellRecommend': SHRT_LNG_MAPNG[current_recommendation],
+            'Date': current_date
+        },
+        'Next': {
+            'BuySellRecommend': SHRT_LNG_MAPNG[next_recommendation],
+            'Date': next_date
+        }
     }
+
     print(message)
-    return jsonify(message) 
+    return jsonify(message)
     
 
 @app.route('/getProposedFund/<id>',methods=['GET'])
@@ -68,6 +115,7 @@ def get_portfolio(id):
 def get_fund(id):
     PrintOnConsole('-----------get_fund---------------')
     UsrObj=db.session.query(User).get(int(id))
+    print
     FundsObj=db.session.query(Funds).filter_by(Email=UsrObj.userEmail).all()
     data=fund_schema.jsonify(None)
     if(FundsObj):
@@ -106,9 +154,15 @@ def upd_fund():
     fund.totalFund=request.json['totalFund']
     fund.allocatedFund=request.json['allocatedFund']
     fund.unusedFund=request.json['unusedFund']
+    fund.MFPer=float(request.json['MFPer'])
+    fund.EQPer=float(request.json['EQPer']) 
+    fund.CMPer=float(request.json['CMPer'])
+    fund.OPPer=float(request.json['OPPer'])
+    db.session.add(fund)                
     db.session.commit()
     data=fund_schema.jsonify(fund)
     data.headers.add('Access-Control-Allow-Origin', '*')
+    PrintOnConsole('------------OUTPUT---------------')
     PrintOnConsole(data.get_data(as_text=True))
     return data
 
@@ -151,6 +205,6 @@ def inspector_network():
     return {"status": "Network inspector active"}, 200
     
 if __name__ == "__main__":
-    app.run(host='10.0.0.4',port='8081',debug=True)
-    #app.run(host='192.168.1.5',port='8081',debug=True)
+    #app.run(host='10.0.0.4',port='8081',debug=True)
+    app.run(host='192.168.56.1',port='8081',debug=True)
     #app.run(debug=True)
