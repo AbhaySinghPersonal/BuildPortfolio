@@ -195,8 +195,12 @@ def get_latest_nav_by_isin(scheme_code,data):
             return Lst
     return None
 
-def UpdateCurrent(Cur_Dt):
+def UpdateCurrent(Cur_Dt,Cur_Dt_Formatted,SegOnHldy):
     print('UpdateCurrent')
+    DoesSysLoadedLatNAV=GDB.IsSchUpdatedOnGivenDt(Cur_Dt_Formatted)
+    if (DoesSysLoadedLatNAV) :
+        print('Latest NAV already loaded- Going to sleep')
+        return
     SchmCodes=GDB.GetAllSchCode()
     LstOfFundNeedsToUpd=[]
     print('Total Funds:'+str(len(SchmCodes)))
@@ -206,37 +210,40 @@ def UpdateCurrent(Cur_Dt):
         data = response.text
     idx=0
     TotalFunds=len(SchmCodes)
+    if ((MUTUAL_FUND in SegOnHldy) and    (EQUITY in SegOnHldy)):
+        print('Market is closed')
+        return
     for Sch in SchmCodes:
         try:
             idx=idx+1
             print('Processing:'+Sch[2]+" "+str(idx)+" of "+str(TotalFunds))
             FndTyp=Sch[3]
-            if(FndTyp==MUTUAL_FUND):
+            if((FndTyp==MUTUAL_FUND) and (MUTUAL_FUND not in SegOnHldy)):
                 nav_data=get_latest_nav_by_isin(Sch[0],data)
                 if(nav_data):
                     nav_data[4]=G.ChangeDtFomat(nav_data[4],"%d-%b-%Y","%Y-%m-%d")
                 else:
                     continue
-            elif(FndTyp==EQUITY):
+            elif((FndTyp==EQUITY) and (EQUITY not in SegOnHldy)):
                 Fund_Com_Lst,Fund_Sub=ExtractData([Sch[0],Sch[2],Sch[1],Sch[4]],"1d",NSE_EXT)
                 KEY_NAV=Fund_Sub[0]
                 nav_data=Fund_Com_Lst[KEY_NAV][0]
                 nav_data[4]=nav_data[4].strftime("%Y-%m-%d")
             else:
-                print('Unknown Fund Type')
+                print('Unknown Fund Type or Market is closed for selected fund')
                 continue
             
             nav_data.append(FndTyp)
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
             continue
-        DoesSysLoadedLatNAV=GDB.IsSchUpdatedOnGivenDt(nav_data[4],Sch[0])
-        if ((not DoesSysLoadedLatNAV) or (FndTyp==EQUITY)):
-            if(isinstance(nav_data[3], float) or isinstance(nav_data[3], int)):
-                LstOfFundNeedsToUpd.append(nav_data)
-            else:
-                nav_data[3]=float(nav_data[3])
-                LstOfFundNeedsToUpd.append(nav_data)
+
+ 
+        if(isinstance(nav_data[3], float) or isinstance(nav_data[3], int)):
+            LstOfFundNeedsToUpd.append(nav_data)
+        else:
+            nav_data[3]=float(nav_data[3])
+            LstOfFundNeedsToUpd.append(nav_data)
     print('Total Funds to Update:'+str(len(LstOfFundNeedsToUpd)))
     if(len(LstOfFundNeedsToUpd)>0):
         Short_Long_Lst=G.UpdLatestNAVForAll(LstOfFundNeedsToUpd,Cur_Dt)

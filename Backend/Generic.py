@@ -9,13 +9,14 @@ from MarketConfig import Smoothing_91,Smoothing_92,Smoothing_12,Smoothing_21,Smo
 from MarketConfig import Smoothing_50,Smoothing_100,RSI_PERIOD,STRONG_SHORT_VALUE,STRONG_LONG_VALUE
 from MarketConfig import STRONG_SHORT,SHORT,STRONG_LONG,LONG,NONE,Fund_FILE_NM,TRADE_CLOSE_LOAD_FILE_NM,TRADE_CLOSE_LOAD_ON
 from MarketConfig import MRKT_STRT_TM,MRKT_END_TM,HIST_LOAD_PER,LOAD_HIST_ANYTIME,CAL_FREE_PERIOD,SELL,BUY,MAX_FUND_TO_PROPOSE,STRONG_TO_LONG_RATIO
-from MarketConfig import RSI_CAL_METHOD, METHOD_CCI, METHOD_SMA,ThreeSD,TwoSD
+from MarketConfig import RSI_CAL_METHOD, METHOD_CCI, METHOD_SMA,ThreeSD,TwoSD,LOAD_HLDY_ANYTIME
 import csv 
 import pandas as pd
 import statistics
 import datetime
 from dateutil.relativedelta import relativedelta
 import GenericDB as GDB
+from pathlib import Path
 def getChromeDiver():
    options = webdriver.ChromeOptions()
    options.add_experimental_option('excludeSwitches', ['enable-logging','enable-automation']) 
@@ -406,15 +407,21 @@ def LoadTradeClosedDate():
    Cur_Dt = datetime.date.today()
    Year=Cur_Dt.strftime("%Y")
    To_Dt=Cur_Dt.strftime("%d-%m")
-   if(To_Dt==TRADE_CLOSE_LOAD_ON):
-      HolList,HolListDict=ExtractData(TRADE_CLOSE_LOAD_FILE_NM,None,[0,1,2,3],",")
-      GDB.BulkInsertTradeClosedDate(HolListDict,Year)
-      RemoveFile(TRADE_CLOSE_LOAD_FILE_NM)
+   if((To_Dt==TRADE_CLOSE_LOAD_ON) or LOAD_HLDY_ANYTIME):
+      my_file = Path(TRADE_CLOSE_LOAD_FILE_NM)
+      if my_file.is_file():
+         HolList,HolListDict=ExtractData(TRADE_CLOSE_LOAD_FILE_NM,None,[0,1,2,3],",")
+         GDB.BulkInsertTradeClosedDate(HolListDict,Year)
+         RemoveFile(TRADE_CLOSE_LOAD_FILE_NM)
 
 def GetCurDate(frmt):
    Cur_Dt = datetime.date.today()
    Cur_Dt_Formatted=Cur_Dt.strftime(frmt)
-   return Cur_Dt_Formatted,Cur_Dt
+   WeekDay=Cur_Dt.weekday()
+   IsWeekEnd=False
+   if(WeekDay>=5):
+      IsWeekEnd=True
+   return Cur_Dt_Formatted,Cur_Dt,IsWeekEnd
 
 def ChangeDtFomat(date_str,SrcFrmt,TrgtFrmt):
    if(isinstance(date_str, str)):

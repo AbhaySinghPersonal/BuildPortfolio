@@ -140,14 +140,24 @@ def GetAllSchCode():
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
 
-def IsSchUpdatedOnGivenDt(Cur_Dt_Formatted,Sch):
+def IsSchUpdatedOnGivenDt(Cur_Dt_Formatted):
     count=0
     with app.app_context():
-        count = db.session.query(FILoaded).filter_by(Ticker=Sch,UpdDate=Cur_Dt_Formatted).count()
+        count = db.session.query(FILoaded).filter_by(UpdDate=Cur_Dt_Formatted).count()
     if(count==0):
         return False
     else:
         return True
+    
+def IsGivenDtHoliday(Cur_Dt_Formatted):
+    count=0
+    with app.app_context():
+        HldLst = db.session.query(TradingClosedDate).filter_by(ClosedDate=Cur_Dt_Formatted).all()
+    SegLst=[]
+    for Hld in HldLst:
+        SegLst.append(Hld.Segment)
+    return SegLst
+
 
 def UpdFILoaded(Sch,Cur_Dt_Formatted):
     try:

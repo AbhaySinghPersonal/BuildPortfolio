@@ -4,12 +4,13 @@ from selenium.common.exceptions import NoSuchElementException,TimeoutException,N
 import time
 from MarketConfig import LOAD_CHCK_INTVL,LIST_OF_ALL
 from pathlib import Path
+import GenericDB as GDB
 
 def mainMarket():
     driver=None
     while True:
         try:
-            Cur_Dt_Formatted,Cur_Dt=G.GetCurDate("%Y-%m-%d")
+            Cur_Dt_Formatted,Cur_Dt,IsWeekEnd=G.GetCurDate("%Y-%m-%d")
             G.LoadTradeClosedDate()
             my_file = Path(LIST_OF_ALL)
             if my_file.is_file():
@@ -19,7 +20,10 @@ def mainMarket():
                 time.sleep(LOAD_CHCK_INTVL)
             else:
                 print('No Stock History to Load: Not Exist'+LIST_OF_ALL)
-            MP.UpdateCurrent(Cur_Dt)
+            
+            if not IsWeekEnd:
+                SegOnHldy=GDB.IsGivenDtHoliday(Cur_Dt_Formatted)
+                MP.UpdateCurrent(Cur_Dt,Cur_Dt_Formatted,SegOnHldy)
             print("Sleeping for "+str(LOAD_CHCK_INTVL)+" seconds")
         except SyntaxError:
             print('Exception SyntaxError')
